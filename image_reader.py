@@ -1,34 +1,30 @@
-import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+import xml.etree.ElementTree as et
+import os
+
+path_to_xml = r'E:\Licenta\Licenta\Resources\Annotations'
+path_to_images = r'E:\Licenta\Licenta\Resources\pasc_data\validation'
 
 
-def read_images(file):
-    with open(file, 'rb') as f:
-        dictionary = pickle.load(f, encoding='latin1')
-    return dictionary
+def get_pascalvoc_labels_from_xml(path_to_xml, path_to_images):
+    with open('./test_labels.txt', 'a') as labels_file:
+        for file in os.listdir(path_to_images):
+            file_name, _ = file.split('.')
+            file_name = file_name + '.xml'
+            xml_file = et.parse(os.path.join(path_to_xml, file_name)).getroot()
+            for child in xml_file.iter('name'):
+                labels_file.write(child.text + '\n')
+                break
 
 
-images = read_images(r'D:\Facultate\Licenta\test_batch')
+def get_unique_labels():
+    labels = []
+    with open('./train_labels.txt', 'r') as file:
+        for line in file:
+            line = line.rstrip('\n')
+            if line not in labels:
+                labels.append(line)
 
-X = images["data"]
-Y = images['labels']
+    print(len(labels))
 
-X = X.reshape(10000, 3, 32, 32).transpose(0, 2, 3, 1).astype("uint8")
-Y = np.array(Y)
 
-index = 0
-
-for image in X:
-    cv2.imwrite(r'D:\Facultate\Licenta\GuiApp\QueryImages' + str(index) + ".jpg", image)
-    index += 1
-
-# fig, axes1 = plt.subplots(5, 5, figsize=(3, 3))
-# for j in range(5):
-#     for k in range(5):
-#         i = np.random.choice(range(len(X)))
-#         axes1[j][k].set_axis_off()
-#         axes1[j][k].imshow(X[i:i+1][0], interpolation='nearest')
-
-#fig.show()
+get_unique_labels()
