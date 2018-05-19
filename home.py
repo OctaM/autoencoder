@@ -1,11 +1,13 @@
 from tkinter import *
+from tkinter import filedialog
+from PIL import Image, ImageTk
+from model import MyModel
+
 import cv2
 import os
-from tkinter import filedialog
-from test_model import retrieve_closest_images
-from PIL import Image, ImageTk
 import pickle
 import numpy as np
+import const
 
 
 class AppWindow(Frame):
@@ -13,7 +15,9 @@ class AppWindow(Frame):
         Frame.__init__(self, master)
         self.master = master
         self.query_img = None
+        self.file_path = const.model_path
         self.init_window()
+        self.model = MyModel(self.file_path)
 
     def open_explorer(self):
         ftypes = [('jpg files', '*.jpg'), ('png files', '*.png'), ('All files', '*')]
@@ -66,7 +70,7 @@ class AppWindow(Frame):
                 print("Cannot read image")
 
     def retrieve_similar_images(self):
-        original_image, retrieved_images, score, labels = retrieve_closest_images(self.query_img.astype('float32') / 255., 70)
+        original_image, retrieved_images, score, labels = self.model.retrieve_closest_images(self.query_img.astype('float32') / 255., 70)
         #print()
         cv2.imwrite(r'./tmp/original_img.jpg', original_image)
         cv2.imwrite(r'./tmp/retrieved_images.jpg', retrieved_images)
