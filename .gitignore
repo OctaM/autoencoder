@@ -13,6 +13,7 @@ __pycache__/
 out
 tmp
 *.xml
+*.jpg
 .workspace
 
 # Distribution / packaging
