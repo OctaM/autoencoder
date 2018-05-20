@@ -38,15 +38,25 @@ def get_cifar_data(file):
 
 def plot_images_to_folder():
     image_number = 10000
-    for data_batch in range(2, 6):
-        dict = get_cifar_data(r'E:\Licenta\Licenta\Resources\cifar\cifar-10-batches-py\data_batch_' + str(data_batch))
-        for image in dict[b'data']:
-            im_r = im_r = image[0:1024].reshape(32, 32)
-            im_g = image[1024:2048].reshape(32, 32)
-            im_b = image[2048:].reshape(32, 32)
-            img = np.dstack((im_b, im_g, im_r))
-            cv2.imwrite(r'./TrainImages/' + str(image_number) + '.jpg', img)
-            image_number += 1
+    # for data_batch in range(1, 6):
+    dict = get_cifar_data(r'E:\Licenta\Licenta\Resources\cifar\cifar-100-python\train')
+    for image in dict[b'data']:
+        im_r = image[0:1024].reshape(32, 32)
+        im_g = image[1024:2048].reshape(32, 32)
+        im_b = image[2048:].reshape(32, 32)
+        img = np.dstack((im_b, im_g, im_r))
+        cv2.imwrite(r'./TrainImages_cifar100/' + str(image_number) + '.jpg', img)
+        image_number += 1
 
 
+def get_cifar_labels():
+    with open('cifar_labels.txt', 'w') as file:
+        for data_batch in range(1, 6):
+            dict = get_cifar_data(r'E:\Licenta\Licenta\Resources\cifar\cifar-10-batches-py\data_batch_' + str(data_batch))
+            for label in dict[b'labels']:
+                file.write(str(label) + '\n')
+
+
+#get_cifar_labels()
 plot_images_to_folder()
+

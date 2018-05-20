@@ -1,3 +1,4 @@
 
 
-model_path = r'.\neural_networks\cifar10_with_dataaug_batchnorm_normalVers.h5'
+model_path = r'.\neural_networks\autoencoder_with_dropout_batchnorm_64_v3.h5'
+train_dir = r'.\TrainImages'

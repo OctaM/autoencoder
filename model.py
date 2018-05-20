@@ -1,7 +1,9 @@
 import numpy as np
 import time
 import cv2
-
+import pickle
+import os
+import const
 
 from sklearn.metrics import label_ranking_average_precision_score
 from keras.models import load_model
@@ -11,21 +13,38 @@ from keras.datasets import cifar10
 
 class MyModel:
     def __init__(self, file_path):
-        self.x_train = None
-        self.y_train = None
+        self.x_train = []
+        self.y_train = []
         self.x_test = None
         self.y_test = None
         self.noise_factor = 0.5
         self.x_train_noisy = None
         self.x_test_noisy = None
+        self.learned_codes = []
         self._load_data()
         self._load_autoencoder(file_path)
         self.encoder = Model(inputs=self.autoencoder.input, outputs=self.autoencoder.get_layer('encoder').output)
         self.scores = []
+        #
+        self._create_codes()
+        self._load_codes()
 
     def _load_data(self):
         t0 = time.time()
         (self.x_train, self.y_train), (self.x_test, self.y_test) = cifar10.load_data()
+
+        # reads labels from txt file in the same order as the images
+        # with open('cifar_labels.txt', 'r') as labels_file:
+        #     for label in labels_file:
+        #         self.y_train.append(int(label))
+        #     self.y_train = np.array(self.y_train)
+        #
+        # # loads images from train directory
+        # for image_name in os.listdir(os.path.join(const.train_dir)):
+        #     self.x_train.append(np.array(cv2.imread(os.path.join(const.train_dir, image_name), cv2.IMREAD_UNCHANGED),
+        #                                  dtype=float))
+
+        #self.x_train = np.array(self.x_train)
         self.x_train = self.x_train.astype('float32') / 255.
         self.x_test = self.x_test.astype('float32') / 255.
         self.x_train = np.reshape(self.x_train, (len(self.x_train), 32, 32, 3))
@@ -41,6 +60,31 @@ class MyModel:
         self.autoencoder = load_model(file_path)
         t1 = time.time()
         print("Model loaded in: {}".format(t1 - t0))
+
+    def _create_codes(self):
+        with open('learned_codes.pkl', 'ab') as file:
+        #     for image in os.listdir(os.path.join(const.train_dir)):
+        #         image = np.array(cv2.imread(os.path.join(const.train_dir, image),
+        #                                     cv2.IMREAD_UNCHANGED), dtype=float)
+        #         image = np.asarray(image) / 255.0
+        #         image = np.expand_dims(image, axis=0)
+        #         self.learned_codes.append(self.encoder.predict(image))
+        #
+        #     self.learned_codes = np.array(self.learned_codes)
+        #     self.learned_codes.reshape(self.learned_codes.shape[0], self.learned_codes.shape[2],
+        #                                self.learned_codes.shape[3], self.learned_codes.shape[4])
+            self.learned_codes = self.encoder.predict(self.x_train)
+            pickle.dump(self.learned_codes, file)
+
+    def _load_codes(self):
+        try:
+            with open('learned_codes.pkl', 'rb') as file:
+                self.learned_codes = pickle.load(file)
+                # self.learned_codes = np.array(self.learned_codes)
+                # self.learned_codes = self.learned_codes.reshape(self.learned_codes.shape[0], self.learned_codes.shape[2],
+                #                                                 self.learned_codes.shape[3], self.learned_codes.shape[4])
+        except FileNotFoundError:
+            print("Learned codes file is missing")
 
     def retrieve_closest_elements(self, test_code, test_label, learned_codes):
         distances = []
@@ -88,19 +132,21 @@ class MyModel:
 
     def retrieve_closest_images(self, test_element, test_label, n_samples=10):
         test_label = self.y_test[test_label]
-        learned_codes = self.encoder.predict(self.x_train)
-        learned_codes = learned_codes.reshape(learned_codes.shape[0],
-                                              learned_codes.shape[1] * learned_codes.shape[2] * learned_codes.shape[3])
+        #self.learned_codes = self.encoder.predict(self.x_train)
+        if len(self.learned_codes.shape) != 2:
+            self.learned_codes = self.learned_codes.reshape(self.learned_codes.shape[0],
+                                                            self.learned_codes.shape[1] * self.learned_codes.shape[2] *
+                                                            self.learned_codes.shape[3])
 
         test_code = self.encoder.predict(np.array([test_element]))
         test_code = test_code.reshape(test_code.shape[1] * test_code.shape[2] * test_code.shape[3])
 
         distances = []
 
-        for code in learned_codes:
+        for code in self.learned_codes:
             distance = np.linalg.norm(code - test_code)
             distances.append(distance)
-        nb_elements = learned_codes.shape[0]
+        nb_elements = self.learned_codes.shape[0]
         distances = np.array(distances)
         learned_code_index = np.arange(nb_elements)
         labels = np.copy(self.y_train).astype('float32')
@@ -131,41 +177,41 @@ class MyModel:
             retrieved_images = np.hstack((retrieved_images, self.x_train[int(kept_indexes[i]), :]))
             # retrieved_images.append(x_train[int(kept_indexes[i]), :])
         for i in range(0, n_samples):
-            retrieved_images_labels.append(self.y_train[int(kept_indexes[i]), :])
+            retrieved_images_labels.append(self.y_train[int(kept_indexes[i])])
         print("Retrieved labels:")
         labels = []
         for label in retrieved_images_labels:
-            if label[0] == 9:
+            if label == 9:
                 print("truck")
                 labels.append("truck")
-            elif label[0] == 0:
+            elif label == 0:
                 print("airplane")
                 labels.append("airplane")
-            elif label[0] == 1:
+            elif label == 1:
                 print("automobile")
                 labels.append("auto")
-            elif label[0] == 2:
+            elif label == 2:
                 print("bird")
                 labels.append("bird")
-            elif label[0] == 3:
+            elif label == 3:
                 print("cat")
                 labels.append("cat")
-            elif label[0] == 4:
+            elif label == 4:
                 print("deer")
                 labels.append("deer")
-            elif label[0] == 5:
+            elif label == 5:
                 print("dog")
                 labels.append("dog")
-            elif label[0] == 6:
+            elif label == 6:
                 print("frog")
                 labels.append("frog")
-            elif label[0] == 7:
+            elif label == 7:
                 print("horse")
                 labels.append("horse")
-            elif label[0] == 8:
+            elif label == 8:
                 print("ship")
                 labels.append("ship")
             else:
-                print(label[0])
-        return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3), 255 * cv2.resize(retrieved_images, (0, 0),
-                                                                                       fx=2, fy=2), score, labels)
+                print(label)
+        return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC),
+                255 * cv2.resize(retrieved_images, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC), score, labels)
