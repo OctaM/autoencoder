@@ -114,14 +114,15 @@ class AppWindow(Frame):
         self.pack(fill=BOTH, expand=1)
 
         # creating a button instance
-        open_explorer = Button(self, text="Open image", command=self.open_explorer)
-        start_retrieving = Button(self, text="Find images", command=self.retrieve_similar_images)
+        open_explorer = Button(self, text="Open image", command=self.open_explorer, width=30, height=2)
+        start_retrieving = Button(self, text="Find images", command=self.retrieve_similar_images, width=30, height=2)
         # placing the button on my window
-        open_explorer.place(x=0, y=0)
-        start_retrieving.place(x=200, y=100)
+        open_explorer.place(x=250, y=250)
+        start_retrieving.place(x=250, y=300)
+
 
 if __name__ == '__main__':
     root = Tk()
-    root.geometry("640x480")
+    root.geometry("1280x720")
     app = AppWindow(root)
     root.mainloop()
