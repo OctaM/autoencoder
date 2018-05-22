@@ -16,13 +16,21 @@ class AppWindow(Frame):
         self.master = master
         self.query_img = None
         self.file_path = const.model_path
+        self.canvas = Canvas(root, width=1280, height=720)
+        self.canvas.pack(expand=YES, fill=BOTH)
         self.init_window()
         self.model = MyModel(self.file_path)
+        self.kept_images = []
 
     def open_explorer(self):
         ftypes = [('jpg files', '*.jpg'), ('png files', '*.png'), ('All files', '*')]
         dlg = filedialog.Open(self, filetypes=ftypes)
         fl = dlg.show()
+
+        for index in range(10):
+            self.canvas.delete('label' + str(index))
+            
+        self.canvas.delete('retr_imgs')
 
         if fl is not None:
             self.read_query_image(fl)
@@ -31,10 +39,12 @@ class AppWindow(Frame):
             img = cv2.merge((r,g,b))
             img = Image.fromarray(img)
             img = ImageTk.PhotoImage(image=img)
-            canvas = Label(self, image=img)
-            canvas.photo = img
-            canvas.pack()
-            canvas.place(x=30, y=30)
+            #self.canvas = Label(self, image=img)
+            self.canvas.create_image(0, 20, image=img, anchor=NW)
+            self.canvas.img = img
+            self.kept_images.append(img)
+            # self.canvas.pack()
+            # self.canvas.place(x=30, y=30)
 
     def load_query_images(self, file_path):
         with open(file_path, 'rb') as f:
@@ -73,37 +83,58 @@ class AppWindow(Frame):
         original_image, retrieved_images, score, labels = self.model.retrieve_closest_images(self.query_img.astype('float32') / 255., 70)
         #print()
         cv2.imwrite(r'./tmp/original_img.jpg', original_image)
-        cv2.imwrite(r'./tmp/retrieved_images.jpg', retrieved_images)
+        image_offset_x = 768
+        image_offset_y = 100
+        placed_images = 0
+        for retr_image in retrieved_images:
+            retr_image = 255 * cv2.resize(retr_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+            b, g, r = cv2.split(retr_image)
+            img = cv2.merge((r, g, b))
+            img = img.astype(np.uint8)
+            img = Image.fromarray(img)
+            img = ImageTk.PhotoImage(image=img)
+            label = Label(self.canvas, image=img)
+            label.image = img
+            if placed_images % 3 == 0:
+                placed_images += 1
+                image_offset_y += 120
+                image_offset_x = 768
+                label.place(x=image_offset_x, y=image_offset_y)
+            else:
+                placed_images += 1
+                image_offset_x += 120
+                label.place(x=image_offset_x, y=image_offset_y)
+            # self.canvas.image = img
+            # self.canvas.create_image(image_offset, 0, image=img, anchor=NW)
+            #   self.canvas.img = img
+        # cv2.imwrite(r'./tmp/retrieved_images.jpg', retrieved_images)
 
         original_image = cv2.imread(r'./tmp/original_img.jpg')
-        retrieved_images = cv2.imread(r'./tmp/retrieved_images.jpg')
+        # retrieved_images = cv2.imread(r'./tmp/retrieved_images.jpg')
 
-        b, g, r = cv2.split(original_image)
-        img = cv2.merge((r, g, b))
-        im = Image.fromarray(img)
-        original_imgtk = ImageTk.PhotoImage(image=im)
-        b, g, r = cv2.split(retrieved_images)
-        img = cv2.merge((r, g, b))
-        im = Image.fromarray(img)
-        retrieved_imgtk = ImageTk.PhotoImage(image=im)
-        novi = Toplevel()
-        canvas = Canvas(novi, width=800, height=800)
-        canvas.pack(expand=YES, fill=BOTH)
-        canvas.create_text(0, 0, text="This is the query image", anchor=NW)
-        canvas.create_image(0, 20, image=original_imgtk, anchor=NW)
+        # b, g, r = cv2.split(original_image)
+        # img = cv2.merge((r, g, b))
+        # im = Image.fromarray(img)
+        # original_imgtk = ImageTk.PhotoImage(image=im)
+        # b, g, r = cv2.split(retrieved_images)
+        # img = cv2.merge((r, g, b))
+        # im = Image.fromarray(img)
+        # retrieved_imgtk = ImageTk.PhotoImage(image=im)
+        self.canvas.create_text(0, 0, text="This is the query image", anchor=NW)
+        # self.canvas.create_image(0, 20, image=original_imgtk, anchor=NW)
         index = 0
         for label in labels:
 
             if index == 0:
-                canvas.create_text(140, 100, text=label, anchor=NW)
+                self.canvas.create_text(140, 100, text=label, anchor=NW, tag='label' + str(index))
                 index += 1
             else:
-                canvas.create_text(140+63*index, 100, text=label, anchor=NW)
+                self.canvas.create_text(140+63*index, 100, text=label, anchor=NW, tag='label' + str(index))
                 index += 1
-        canvas.create_image(130, 0, image=retrieved_imgtk, anchor=NW)
+        # self.canvas.create_image(130, 0, image=retrieved_imgtk, anchor=NW, tag='retr_imgs')
         #canvas.text="This is a text"
-        canvas.original_imgtk = original_imgtk
-        canvas.retrieved_imgtk = retrieved_imgtk
+        # self.canvas.original_imgtk = original_imgtk
+        # self.canvas.retrieved_imgtk = retrieved_imgtk
 
     # Creation of init_window
     def init_window(self):
@@ -114,8 +145,8 @@ class AppWindow(Frame):
         self.pack(fill=BOTH, expand=1)
 
         # creating a button instance
-        open_explorer = Button(self, text="Open image", command=self.open_explorer, width=30, height=2)
-        start_retrieving = Button(self, text="Find images", command=self.retrieve_similar_images, width=30, height=2)
+        open_explorer = Button(self.canvas, text="Open image", command=self.open_explorer, width=30, height=2)
+        start_retrieving = Button(self.canvas, text="Find images", command=self.retrieve_similar_images, width=30, height=2)
         # placing the button on my window
         open_explorer.place(x=250, y=250)
         start_retrieving.place(x=250, y=300)

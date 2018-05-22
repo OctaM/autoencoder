@@ -171,11 +171,12 @@ class MyModel:
         original_image = test_element
         retrieved_images_labels = []
         # cv2.imshow('original_image', original_image)
-        # retrieved_images = []
-        retrieved_images = self.x_train[int(kept_indexes[0]), :]
+        retrieved_images = []
+        # retrieved_images = self.x_train[int(kept_indexes[0]), :]
+        retrieved_images.append(self.x_train[int(kept_indexes[0]), :])
         for i in range(1, n_samples):
-            retrieved_images = np.hstack((retrieved_images, self.x_train[int(kept_indexes[i]), :]))
-            # retrieved_images.append(x_train[int(kept_indexes[i]), :])
+            # retrieved_images = np.hstack((retrieved_images, self.x_train[int(kept_indexes[i]), :]))
+            retrieved_images.append(self.x_train[int(kept_indexes[i]), :])
         for i in range(0, n_samples):
             retrieved_images_labels.append(self.y_train[int(kept_indexes[i])])
         print("Retrieved labels:")
@@ -213,5 +214,7 @@ class MyModel:
                 labels.append("ship")
             else:
                 print(label)
+        # return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC),
+        #         255 * cv2.resize(retrieved_images, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC), score, labels)
         return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC),
-                255 * cv2.resize(retrieved_images, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC), score, labels)
+                retrieved_images, score, labels)
