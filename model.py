@@ -9,6 +9,7 @@ from sklearn.metrics import label_ranking_average_precision_score
 from keras.models import load_model
 from keras.models import Model
 from keras.datasets import cifar10
+from pathlib import Path
 
 
 class MyModel:
@@ -62,19 +63,22 @@ class MyModel:
         print("Model loaded in: {}".format(t1 - t0))
 
     def _create_codes(self):
-        with open('learned_codes.pkl', 'ab') as file:
-        #     for image in os.listdir(os.path.join(const.train_dir)):
-        #         image = np.array(cv2.imread(os.path.join(const.train_dir, image),
-        #                                     cv2.IMREAD_UNCHANGED), dtype=float)
-        #         image = np.asarray(image) / 255.0
-        #         image = np.expand_dims(image, axis=0)
-        #         self.learned_codes.append(self.encoder.predict(image))
-        #
-        #     self.learned_codes = np.array(self.learned_codes)
-        #     self.learned_codes.reshape(self.learned_codes.shape[0], self.learned_codes.shape[2],
-        #                                self.learned_codes.shape[3], self.learned_codes.shape[4])
-            self.learned_codes = self.encoder.predict(self.x_train)
-            pickle.dump(self.learned_codes, file)
+
+        learned_codes = Path('learned_codes.pkl')
+        if not learned_codes.exists():
+            with open('learned_codes.pkl', 'ab') as file:
+            #     for image in os.listdir(os.path.join(const.train_dir)):
+            #         image = np.array(cv2.imread(os.path.join(const.train_dir, image),
+            #                                     cv2.IMREAD_UNCHANGED), dtype=float)
+            #         image = np.asarray(image) / 255.0
+            #         image = np.expand_dims(image, axis=0)
+            #         self.learned_codes.append(self.encoder.predict(image))
+            #
+            #     self.learned_codes = np.array(self.learned_codes)
+            #     self.learned_codes.reshape(self.learned_codes.shape[0], self.learned_codes.shape[2],
+            #                                self.learned_codes.shape[3], self.learned_codes.shape[4])
+                self.learned_codes = self.encoder.predict(self.x_train)
+                pickle.dump(self.learned_codes, file)
 
     def _load_codes(self):
         try:
@@ -130,7 +134,7 @@ class MyModel:
         self.scores.append(score)
         return score
 
-    def retrieve_closest_images(self, test_element, test_label, n_samples=10):
+    def retrieve_closest_images(self, test_element, test_label, n_samples=10, binary_signatures=0):
         test_label = self.y_test[test_label]
         #self.learned_codes = self.encoder.predict(self.x_train)
         if len(self.learned_codes.shape) != 2:
@@ -140,11 +144,19 @@ class MyModel:
 
         test_code = self.encoder.predict(np.array([test_element]))
         test_code = test_code.reshape(test_code.shape[1] * test_code.shape[2] * test_code.shape[3])
-
+        # test_code = (test_code-np.min(test_code)) / (np.max(test_code) - np.min(test_code))
+        if binary_signatures == 1:
+            test_code[test_code > np.mean(test_code)] = 1
+            test_code[test_code <= np.mean(test_code)] = 0
         distances = []
 
         for code in self.learned_codes:
-            distance = np.linalg.norm(code - test_code)
+            # code = (code - np.min(code)) / (np.max(code) - np.min(code))
+            if binary_signatures == 1:
+                code[code > np.mean(test_code)] = 1
+                code[code <= np.mean(test_code)] = 0
+            #distance = np.linalg.norm(code - test_code)
+            distance = np.count_nonzero(code != test_code)
             distances.append(distance)
         nb_elements = self.learned_codes.shape[0]
         distances = np.array(distances)
@@ -172,10 +184,11 @@ class MyModel:
         retrieved_images_labels = []
         # cv2.imshow('original_image', original_image)
         retrieved_images = []
-        # retrieved_images = self.x_train[int(kept_indexes[0]), :]
+        retrieved_images2 = []
+        retrieved_images2= self.x_train[int(kept_indexes[0]), :]
         retrieved_images.append(self.x_train[int(kept_indexes[0]), :])
         for i in range(1, n_samples):
-            # retrieved_images = np.hstack((retrieved_images, self.x_train[int(kept_indexes[i]), :]))
+            retrieved_images2 = np.hstack((retrieved_images2, self.x_train[int(kept_indexes[i]), :]))
             retrieved_images.append(self.x_train[int(kept_indexes[i]), :])
         for i in range(0, n_samples):
             retrieved_images_labels.append(self.y_train[int(kept_indexes[i])])
@@ -216,5 +229,6 @@ class MyModel:
                 print(label)
         # return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC),
         #         255 * cv2.resize(retrieved_images, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC), score, labels)
+        cv2.imwrite('./result.jpg', 255 * cv2.resize(retrieved_images2, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_CUBIC))
         return (255 * cv2.resize(original_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC),
                 retrieved_images, score, labels)

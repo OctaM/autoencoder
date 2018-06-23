@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk
+from tensorflow import variable_scope
+
 from model import MyModel
 
 import cv2
@@ -21,6 +23,31 @@ class AppWindow(Frame):
         self.init_window()
         self.model = MyModel(self.file_path)
         self.kept_images = []
+        self.images_container = []
+        self._create_labels()
+        self.binary_signatures = IntVar()
+        self.nn_arhitectures = {
+            'cifar',
+            'mnist',
+            'fmnist'
+        }
+
+    # create Label objects for displaying retrieved images
+    def _create_labels(self):
+
+        for placed_images in range(10):
+            label = Label(self.canvas)
+            # label.config(image=img)
+            self.images_container.append(label)
+            if placed_images % 3 == 0:
+                placed_images += 1
+                const.image_offset_y += 120
+                const.image_offset_x = 768
+                label.place(x=const.image_offset_x, y=const.image_offset_y)
+            else:
+                placed_images += 1
+                const.image_offset_x += 120
+                label.place(x=const.image_offset_x, y=const.image_offset_y)
 
     def open_explorer(self):
         ftypes = [('jpg files', '*.jpg'), ('png files', '*.png'), ('All files', '*')]
@@ -29,6 +56,10 @@ class AppWindow(Frame):
 
         for index in range(10):
             self.canvas.delete('label' + str(index))
+            self.canvas.delete('image' + str(index))
+
+        for image in self.images_container:
+            image.config(image="")
             
         self.canvas.delete('retr_imgs')
 
@@ -79,47 +110,28 @@ class AppWindow(Frame):
             except ValueError:
                 print("Cannot read image")
 
+    def _set_binary_signatures(self, binary_sign):
+        if binary_sign.get() == 0:
+            self.binary_signatures = 0
+        else:
+            self.binary_signatures = 1
+
     def retrieve_similar_images(self):
-        original_image, retrieved_images, score, labels = self.model.retrieve_closest_images(self.query_img.astype('float32') / 255., 70)
-        #print()
+        original_image, retrieved_images, score, labels = self.model.retrieve_closest_images(self.query_img.astype('float32') / 255., 70, 10,  self.binary_sign.get())
         cv2.imwrite(r'./tmp/original_img.jpg', original_image)
-        image_offset_x = 768
-        image_offset_y = 100
-        placed_images = 0
-        for retr_image in retrieved_images:
+
+        for retr_image, image_container in zip(retrieved_images, self.images_container):
             retr_image = 255 * cv2.resize(retr_image, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
             b, g, r = cv2.split(retr_image)
             img = cv2.merge((r, g, b))
             img = img.astype(np.uint8)
             img = Image.fromarray(img)
             img = ImageTk.PhotoImage(image=img)
-            label = Label(self.canvas, image=img)
-            label.image = img
-            if placed_images % 3 == 0:
-                placed_images += 1
-                image_offset_y += 120
-                image_offset_x = 768
-                label.place(x=image_offset_x, y=image_offset_y)
-            else:
-                placed_images += 1
-                image_offset_x += 120
-                label.place(x=image_offset_x, y=image_offset_y)
-            # self.canvas.image = img
-            # self.canvas.create_image(image_offset, 0, image=img, anchor=NW)
-            #   self.canvas.img = img
-        # cv2.imwrite(r'./tmp/retrieved_images.jpg', retrieved_images)
+            image_container.config(image=img)
+            image_container.image = img
+
 
         original_image = cv2.imread(r'./tmp/original_img.jpg')
-        # retrieved_images = cv2.imread(r'./tmp/retrieved_images.jpg')
-
-        # b, g, r = cv2.split(original_image)
-        # img = cv2.merge((r, g, b))
-        # im = Image.fromarray(img)
-        # original_imgtk = ImageTk.PhotoImage(image=im)
-        # b, g, r = cv2.split(retrieved_images)
-        # img = cv2.merge((r, g, b))
-        # im = Image.fromarray(img)
-        # retrieved_imgtk = ImageTk.PhotoImage(image=im)
         self.canvas.create_text(0, 0, text="This is the query image", anchor=NW)
         # self.canvas.create_image(0, 20, image=original_imgtk, anchor=NW)
         index = 0
@@ -131,10 +143,6 @@ class AppWindow(Frame):
             else:
                 self.canvas.create_text(140+63*index, 100, text=label, anchor=NW, tag='label' + str(index))
                 index += 1
-        # self.canvas.create_image(130, 0, image=retrieved_imgtk, anchor=NW, tag='retr_imgs')
-        #canvas.text="This is a text"
-        # self.canvas.original_imgtk = original_imgtk
-        # self.canvas.retrieved_imgtk = retrieved_imgtk
 
     # Creation of init_window
     def init_window(self):
@@ -150,6 +158,22 @@ class AppWindow(Frame):
         # placing the button on my window
         open_explorer.place(x=250, y=250)
         start_retrieving.place(x=250, y=300)
+        nn_arhitectures = {
+            'cifar',
+            'mnist',
+            'fmnist'
+        }
+        variable = StringVar(self.canvas)
+        variable.set('cifar')
+
+        drop_down = OptionMenu(self.canvas, variable, *nn_arhitectures)
+        drop_down.place(x=250, y=350)
+
+        self.binary_sign = IntVar()
+
+        checkbutton = Checkbutton(self.canvas, text="Binarize signatures", variable=self.binary_sign, onvalue=1,
+                                  offvalue=0)
+        checkbutton.place(x=500, y=305)
 
 
 if __name__ == '__main__':
